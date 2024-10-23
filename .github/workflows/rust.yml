@@ -1,0 +1,122 @@
+name: Rust
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: cargo test
+    runs-on: ubuntu-latest
+    container:
+      image: rust:1.82
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: dev_only_pwd
+          POSTGRES_DB: slowpocket
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    env:
+      DATABASE_URL: "postgresql://postgres:dev_only_pwd@postgres:5432/slowpocket"
+      TEST_DB_USERNAME: test_usr
+      TEST_DB_PASSWORD: test_pwd
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            /root/.cargo/registry
+            /root/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install sqlx
+        run: |
+          cargo install sqlx-cli --no-default-features --features rustls,postgres
+      - name: Run database migrations
+        run: |
+          cd data/ && cargo sqlx database setup && sqlx migrate run && cd ..
+      - name: cargo test
+        run: cargo test
+
+  fmt-check:
+    name: cargo fmt-check
+    runs-on: ubuntu-latest
+    container:
+      image: rust:1.82
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            /root/.cargo/registry
+            /root/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Add cargo fmt
+        run: |
+          rustup component add rustfmt
+      - name: cargo fmt
+        run: |
+          cargo fmt --check
+
+  lint:
+    name: cargo clippy
+    runs-on: ubuntu-latest
+    container:
+      image: rust:1.82
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: dev_only_pwd
+          POSTGRES_DB: slowpocket
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    env:
+      DATABASE_URL: "postgresql://postgres:dev_only_pwd@postgres:5432/slowpocket"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            /root/.cargo/registry
+            /root/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install sqlx
+        run: |
+          cargo install sqlx-cli --no-default-features --features rustls,postgres
+      - name: Run database migrations
+        run: |
+          cd data/ && cargo sqlx database setup && sqlx migrate run && cd ..
+      - name: Add clippy
+        run: |
+          rustup component add clippy
+      - name: cargo clippy
+        run: >
+          cargo clippy --bins --lib --tests --examples --
+          -D warnings -D clippy::all
+          -D non-ascii-idents
+          -D clippy::dbg-macro
+          -D clippy::default-union-representation
+          -D clippy::mixed-read-write-in-expression
+          -D clippy::try-err

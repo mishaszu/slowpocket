@@ -29,6 +29,10 @@ pub enum Error {
     CannotDeleteReferenced(String),
     #[error("Invalid argument: {0}")]
     InvalidArgument(String),
+    #[error("Can't save password")]
+    Hash,
+    #[error("Failed to run task")]
+    SpawnTask,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

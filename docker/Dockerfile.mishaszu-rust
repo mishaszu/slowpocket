@@ -1,0 +1,24 @@
+# Use Rust 1.80 official image as the base
+FROM rust:1.80-slim
+
+# Install necessary system dependencies (e.g., PostgreSQL client, openssl, etc.)
+RUN apt-get update && apt-get install -y \
+  libpq-dev \
+  pkg-config \
+  build-essential \
+  libssl-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install sqlx-cli globally using cargo
+RUN cargo install sqlx-cli --no-default-features --features rustls,postgres
+RUN rustup component add rustfmt
+RUN rustup component add clippy
+
+# Set the working directory (optional)
+WORKDIR /usr/src/app
+
+# Add sqlx-cli to the PATH for easier access
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Set the default command to sqlx so you can test with sqlx commands (can be overridden in child images)
+CMD ["sqlx", "--help"]

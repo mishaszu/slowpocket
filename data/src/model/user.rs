@@ -17,5 +17,11 @@ pub struct User {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateUser {
     pub email: Option<String>,
-    pub hash: Option<String>,
+    pub password: Option<PasswordUpdate>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PasswordUpdate {
+    pub old_password: String,
+    pub new_password: String,
 }

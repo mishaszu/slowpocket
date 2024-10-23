@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rust-argon2 = "2.1.0"
+tokio = { version = "1", features = ["full"] }
+argon2 = "0.5.3"
 chrono = { version = "0.4", features = ["serde"] }
 opentelemetry = "0.25"
 serde = "1.0"

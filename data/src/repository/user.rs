@@ -37,9 +37,13 @@ pub trait UserRepository {
         &self,
         email: &str,
         password: &str,
-    ) -> impl Future<Output = Result<bool, Error>> + Send;
+    ) -> impl Future<Output = Result<(), Error>> + Send;
 
-    fn verify_password(&self, password: &str) -> impl Future<Output = Result<bool, Error>> + Send;
+    fn verify_password(
+        &self,
+        password: &str,
+        hash: &str,
+    ) -> impl Future<Output = Result<(), Error>> + Send;
 
     fn hash_password(&self, password: &str) -> impl Future<Output = Result<String, Error>> + Send;
 }

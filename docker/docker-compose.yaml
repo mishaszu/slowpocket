@@ -4,7 +4,7 @@ services:
     image: postgres:latest
     restart: always
     ports:
-      - "5432:5432"
+      - "15432:5432"
     environment:
       POSTGRES_PASSWORD: "dev_only_pwd"
       POSTGRES_DB: "slowpocket"
