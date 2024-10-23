@@ -1,4 +1,7 @@
-use argon2::Config;
+use argon2::{
+    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    Argon2,
+};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -11,13 +14,13 @@ use super::UserRepository;
 
 #[derive(Debug, Clone)]
 pub struct PostgresUserRepository {
-    pool: PgPool,
-    config: Config<'static>,
+    pub pool: PgPool,
+    argon: Argon2<'static>,
 }
 
 impl PostgresUserRepository {
-    pub fn new(pool: PgPool, config: Config<'static>) -> Self {
-        Self { pool, config }
+    pub fn new(pool: PgPool, argon: Argon2<'static>) -> Self {
+        Self { pool, argon }
     }
 }
 
@@ -93,7 +96,7 @@ impl UserRepository for PostgresUserRepository {
                     $2,
                     $3
                 )
-                RETURNING id, email, hash, is_admin, created_at, updated_at;
+                RETURNING *;
             "#,
             new_id,
             email,
@@ -117,19 +120,69 @@ impl UserRepository for PostgresUserRepository {
         todo!()
     }
 
-    async fn verify_user_password(&self, email: &str, password: &str) -> Result<bool, Error> {
-        todo!()
+    async fn delete_user(&self, id: &Uuid) -> Result<User, Error> {
+        let mut tx = self
+            .pool
+            .clone()
+            .begin()
+            .await
+            .map_err(Error::TransactionError)?;
+
+        let result = sqlx::query!(
+            r#"
+                DELETE FROM users
+                WHERE id = $1
+                RETURNING *;
+            "#,
+            id
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(Error::ReadError)?;
+
+        Ok(User {
+            id: result.id,
+            email: result.email,
+            hash: result.hash,
+            is_admin: result.is_admin,
+            created_at: result.created_at,
+            updated_at: result.updated_at,
+        })
     }
 
-    async fn delete_user(&self, id: &Uuid) -> Result<User, Error> {
-        todo!()
+    async fn verify_user_password(&self, email: &str, password: &str) -> Result<(), Error> {
+        let mut tx = self
+            .pool
+            .clone()
+            .begin()
+            .await
+            .map_err(Error::TransactionError)?;
+
+        let result = sqlx::query!(r#"SELECT * FROM users WHERE email = $1;"#, email)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(Error::ReadError)?;
+
+        self.verify_password(password, &result.hash).await
     }
 
     async fn hash_password(&self, password: &str) -> Result<String, Error> {
-        todo!()
+        let salt = SaltString::generate(&mut OsRng);
+
+        self.argon
+            .hash_password(password.as_bytes(), &salt)
+            .map(|value| value.to_string())
+            .map_err(|_| Error::Hash)
     }
 
-    async fn verify_password(&self, hash: &str) -> Result<bool, Error> {
-        todo!()
+    async fn verify_password(&self, password: &str, hash: &str) -> Result<(), Error> {
+        let parsed_hash = PasswordHash::new(hash).map_err(|_| Error::Hash)?;
+
+        self.argon
+            .verify_password(password.as_bytes(), &parsed_hash)
+            .inspect_err(|err| {
+                println!("there is an error: {err:#?}");
+            })
+            .map_err(|_| Error::Hash)
     }
 }
