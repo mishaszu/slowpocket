@@ -161,6 +161,7 @@ async fn delete_user(
     match user_repo.get_user(&user.id).await {
         Ok(_) => panic!("Can get user after deletion"),
         Err(data::Error::NotFound(_)) => Ok(()),
+        Err(data::Error::ReadError(sqlx::Error::RowNotFound)) => Ok(()),
         Err(err) => panic!("Get wrong error after getting deleted user: {err}"),
     }
 }

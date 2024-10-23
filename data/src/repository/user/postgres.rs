@@ -38,6 +38,8 @@ impl UserRepository for PostgresUserRepository {
             .await
             .map_err(Error::ReadError)?;
 
+        tx.commit().await.map_err(Error::TransactionError)?;
+
         Ok(User {
             id: result.id,
             email: result.email,
@@ -60,6 +62,8 @@ impl UserRepository for PostgresUserRepository {
             .fetch_all(&mut *tx)
             .await
             .map_err(Error::ReadError)?;
+
+        tx.commit().await.map_err(Error::TransactionError)?;
 
         let users: Vec<User> = result
             .into_iter()
@@ -106,6 +110,8 @@ impl UserRepository for PostgresUserRepository {
         .await
         .map_err(Error::ReadError)?;
 
+        tx.commit().await.map_err(Error::TransactionError)?;
+
         Ok(User {
             id: result.id,
             email: result.email,
@@ -140,6 +146,8 @@ impl UserRepository for PostgresUserRepository {
         .await
         .map_err(Error::ReadError)?;
 
+        tx.commit().await.map_err(Error::TransactionError)?;
+
         Ok(User {
             id: result.id,
             email: result.email,
@@ -162,6 +170,8 @@ impl UserRepository for PostgresUserRepository {
             .fetch_one(&mut *tx)
             .await
             .map_err(Error::ReadError)?;
+
+        tx.commit().await.map_err(Error::TransactionError)?;
 
         self.verify_password(password, &result.hash).await
     }
