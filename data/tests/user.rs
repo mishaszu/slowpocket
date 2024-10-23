@@ -139,6 +139,36 @@ async fn update_user_password(
 }
 
 #[sqlx::test(fixtures("user"))]
+async fn update_user_email_and_password(
+    pool_options: PgPoolOptions,
+    connect_options: PgConnectOptions,
+) -> sqlx::Result<()> {
+    let user_repo = build_repo(pool_options, connect_options).await?;
+
+    let update_email = "another@myemail.com";
+    let new_password = "brand_new_pass";
+    let old_password = "dev_only_pass";
+
+    let user_id = Uuid::parse_str("a74f9b43-8a49-4d97-8270-9879d37c600d").unwrap();
+
+    let update = UpdateUser {
+        email: Some(update_email.to_string()),
+        password: Some(PasswordUpdate {
+            new_password: new_password.to_string(),
+            old_password: old_password.to_string(),
+        }),
+    };
+
+    let user = user_repo.update_user(&user_id, update).await.unwrap();
+
+    let validate = user_repo.verify_password(new_password, &user.hash).await;
+
+    assert!(validate.is_ok());
+
+    Ok(())
+}
+
+#[sqlx::test(fixtures("user"))]
 async fn delete_user(
     pool_options: PgPoolOptions,
     connect_options: PgConnectOptions,

@@ -31,6 +31,8 @@ pub enum Error {
     InvalidArgument(String),
     #[error("Can't save password")]
     Hash,
+    #[error("Failed to run task")]
+    SpawnTask,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
